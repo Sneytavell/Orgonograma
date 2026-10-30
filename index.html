@@ -89,7 +89,7 @@
 <body>
 <header>
   <h1>Organograma de Responsabilidades – Bombeiros Civis</h1>
-  <p>Clique em cada função para ver as responsabilidades. Use os filtros por área ou a busca.</p>
+  <p>Clique em cada função para ver as responsabilidades. Use a busca para encontrar uma atividade.</p>
 </header>
 
 <div class="bar">
@@ -109,7 +109,6 @@
 </div>
 
 <main>
-  <div class="chips" id="chips"></div>
   <section id="org"><div class="tree" id="tree"></div></section>
   <section id="mat" hidden>
     <div class="legend">
@@ -227,7 +226,7 @@ function matriz(){
   document.getElementById("tbl").innerHTML = h;
 }
 
-function render(){ chips(); tree(); matriz(); }
+function render(){ tree(); matriz(); }
 
 /* ---- mover ações ---- */
 function moveOpts(ri,c){
@@ -345,7 +344,6 @@ document.addEventListener("click", e => {
   if(t){ document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("on",b===t));
     document.getElementById("org").hidden = t.dataset.view!=="org";
     document.getElementById("mat").hidden = t.dataset.view!=="mat"; return; }
-  const c = e.target.closest(".chip"); if(c){ cat = c.dataset.c; render(); return; }
   const n = e.target.closest(".node"); if(n && !editing()){ const id=n.dataset.id; open.has(id)?open.delete(id):open.add(id); tree(); return; }
   const el = e.target;
   if(!editing()) return;
