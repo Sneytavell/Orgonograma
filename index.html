@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Organograma – Bombeiros Civis</title>
+<style>
+  :root{
+    --bg:#f6f5f2; --card:#fff; --ink:#1d1f23; --muted:#6b6f76; --line:#d9d6cf;
+    --sup:#8a1c1c; --lid:#c2410c; --bas:#b45309; --ok:#15803d; --warn:#fff7e0;
+    --sup-soft:#f8e7e7; --lid-soft:#fdeee4; --bas-soft:#fdf3e1;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#16171a; --card:#212328; --ink:#ececec; --muted:#a0a3a9; --line:#363940; --warn:#3a3218;
+      --sup-soft:#3a1f1f; --lid-soft:#3b2619; --bas-soft:#3a2d17; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+  header{padding:24px 20px 8px;max-width:1100px;margin:0 auto}
+  h1{margin:0;font-size:1.45rem}
+  header p{margin:6px 0 0;color:var(--muted);font-size:.92rem}
+  .bar{max-width:1100px;margin:14px auto 0;padding:0 20px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  button{font:inherit}
+  .tab,.chip,.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 14px;border-radius:999px;cursor:pointer;font-size:.88rem}
+  .tab.on,.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .btn.pri{background:var(--ok);border-color:var(--ok);color:#fff}
+  .btn:disabled{opacity:.5;cursor:default}
+  .sep{flex:1}
+  input[type=search]{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 12px;border-radius:8px;min-width:200px;font-size:.88rem}
+  main{max-width:1100px;margin:0 auto;padding:18px 20px 40px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+  .editbar{max-width:1100px;margin:12px auto 0;padding:10px 14px;display:none;gap:8px;align-items:center;flex-wrap:wrap;background:var(--warn);border:1px solid var(--line);border-radius:10px;font-size:.88rem}
+  .editbar.on{display:flex}
+  .status{font-size:.8rem;color:var(--muted)}
+
+  .tree{display:flex;flex-direction:column;align-items:center}
+  .node{width:min(360px,100%);background:var(--card);border:2px solid var(--c);border-radius:12px;padding:14px 16px;cursor:pointer;text-align:center;transition:transform .15s, box-shadow .15s}
+  .node:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.08)}
+  .node.on{background:var(--soft)}
+  .node .lvl{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--c);font-weight:700}
+  .node .nm{font-size:1.1rem;font-weight:700;margin:2px 0}
+  .node .ms{font-size:.85rem;color:var(--muted)}
+  .node .ct{font-size:.78rem;margin-top:6px;color:var(--muted)}
+  .link{width:2px;height:26px;background:var(--line)}
+  .detail{width:100%;margin:10px 0 4px;background:var(--card);border:1px solid var(--line);border-left:5px solid var(--c);border-radius:10px;padding:14px 18px;display:none}
+  .detail.on{display:block}
+  .grp{margin:10px 0}
+  .grp h4{margin:0 0 6px;font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--c)}
+  .grp ul{margin:0;padding-left:18px}
+  .grp li{margin:4px 0;font-size:.92rem;line-height:1.4}
+  .reports{font-size:.85rem;color:var(--muted);margin-top:8px;border-top:1px dashed var(--line);padding-top:8px}
+  mark{background:#fde68a;color:inherit;border-radius:3px}
+  .empty{color:var(--muted);font-size:.88rem;font-style:italic}
+
+  /* edição */
+  .ed{width:100%;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;padding:6px 8px;font:inherit;font-size:.9rem}
+  .erow{display:flex;gap:6px;align-items:center;margin:4px 0}
+  .x{border:none;background:none;color:var(--sup);cursor:pointer;font-size:1rem;padding:4px 8px;border-radius:6px}
+  .x:hover{background:var(--sup-soft)}
+  .add{border:1px dashed var(--line);background:none;color:var(--muted);cursor:pointer;border-radius:6px;padding:4px 10px;font-size:.82rem;margin-top:4px}
+  .flab{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:8px 0 2px;display:block}
+  .edhead{display:grid;gap:4px;margin-bottom:8px}
+  select.ed{width:auto}
+  .h{cursor:grab;color:var(--muted);padding:4px 4px;user-select:none;font-size:1rem;line-height:1}
+  .h:active{cursor:grabbing}
+  .mv{border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;border-radius:6px;padding:3px 7px;font-size:.8rem}
+  .mv:disabled{opacity:.3;cursor:default}
+  .mvsel{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:6px;padding:4px 6px;font-size:.8rem;max-width:150px}
+  .drag{opacity:.4}
+  .over{outline:2px dashed var(--lid);outline-offset:2px;border-radius:6px}
+  .zone{min-height:6px;border-radius:6px}
+
+  .tbl{width:100%;border-collapse:collapse;background:var(--card);border-radius:10px;overflow:hidden;font-size:.9rem}
+  .tbl th,.tbl td{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}
+  .tbl th{background:var(--bg);font-size:.78rem;text-transform:uppercase;letter-spacing:.05em}
+  .tbl td.r{text-align:center;width:110px}
+  .tbl tr.cat td{background:var(--bg);font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .b{display:inline-block;min-width:28px;padding:3px 7px;border-radius:6px;font-weight:700;font-size:.78rem}
+  .b.A{background:#8a1c1c;color:#fff}.b.C{background:#c2410c;color:#fff}.b.E{background:#b45309;color:#fff}.b.P{background:var(--line);color:var(--ink)}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:0 0 12px;font-size:.85rem;color:var(--muted)}
+  .wrap{overflow-x:auto}
+  footer{max-width:1100px;margin:0 auto;padding:0 20px 30px;color:var(--muted);font-size:.78rem}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;padding:20px}
+  .modal.on{display:flex}
+  .modal .box{background:var(--card);border-radius:12px;padding:18px 20px;max-width:380px}
+  .modal .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Organograma de Responsabilidades – Bombeiros Civis</h1>
+  <p>Clique em cada função para ver as responsabilidades. Use os filtros por área ou a busca.</p>
+</header>
+
+<div class="bar">
+  <button class="tab on" data-view="org">Organograma</button>
+  <button class="tab" data-view="mat">Matriz de responsabilidades</button>
+  <span class="sep"></span>
+  <span class="status" id="status"></span>
+  <input type="search" id="q" placeholder="Buscar responsabilidade…">
+  <button class="btn" id="btnEdit" hidden>✏️ Editar</button>
+</div>
+<div class="editbar" id="editbar">
+  <strong>Modo de edição</strong>
+  <span class="status">As alterações só ficam visíveis para todos depois de salvar.</span>
+  <span class="sep"></span>
+  <button class="btn" id="btnCancel">Cancelar</button>
+  <button class="btn pri" id="btnSave">Salvar</button>
+</div>
+
+<main>
+  <div class="chips" id="chips"></div>
+  <section id="org"><div class="tree" id="tree"></div></section>
+  <section id="mat" hidden>
+    <div class="legend">
+      <span><span class="b A">A</span> Aprova / responde</span>
+      <span><span class="b C">C</span> Coordena</span>
+      <span><span class="b E">E</span> Executa</span>
+      <span><span class="b P">P</span> Participa / apoia</span>
+    </div>
+    <div class="wrap"><table class="tbl" id="tbl"></table></div>
+  </section>
+</main>
+<footer>Referências: ABNT NBR 14608 (Bombeiro Civil) e NBR 14276 (Brigada de Incêndio). Ajuste os itens conforme o procedimento interno da unidade.</footer>
+
+<div class="modal" id="modal"><div class="box">
+  <div id="modalTxt"></div>
+  <div class="acts"><button class="btn" id="mNo">Voltar</button><button class="btn pri" id="mYes">Descartar</button></div>
+</div></div>
+
+<script>
+const CATS = ["Emergência","Prevenção e Inspeção","Gestão da Equipe","Treinamento","Documentação"];
+const STYLE = [
+  {c:"var(--sup)", soft:"var(--sup-soft)"},
+  {c:"var(--lid)", soft:"var(--lid-soft)"},
+  {c:"var(--bas)", soft:"var(--bas-soft)"}
+];
+
+/* Conteúdo exibido enquanto o banco ainda não foi carregado */
+const DEFAULT = {"matriz":[{"atv":"Acionamento e coordenação do PAE","bas":"P","cat":"Emergência","lid":"C","sup":"A"},{"atv":"Comando da cena da ocorrência","bas":"E","cat":"Emergência","lid":"C","sup":"A"},{"atv":"Combate a princípio de incêndio","bas":"E","cat":"Emergência","lid":"C","sup":"P"},{"atv":"Verificação de acionamentos de alarmes de emergência","bas":"E","cat":"Emergência","lid":"C","sup":"P"},{"atv":"Primeiros socorros / APH e transporte de vítimas","bas":"E","cat":"Emergência","lid":"C","sup":"P"},{"atv":"Salvamento e resgate","bas":"E","cat":"Emergência","lid":"C","sup":"P"},{"atv":"Captura de animais (domésticos e silvestres)","bas":"E","cat":"Emergência","lid":"C","sup":"P"},{"atv":"Contenção de vazamentos de óleo (pequenas quantidades)","bas":"E","cat":"Emergência","lid":"C","sup":"P"},{"atv":"Operação da Central de Ocorrência (CFTV)","bas":"E","cat":"Emergência","lid":"C","sup":"P"},{"atv":"Condução do caminhão de combate a incêndio","bas":"E","cat":"Emergência","lid":"C","sup":"P"},{"atv":"Acionamento de apoio externo","bas":"P","cat":"Emergência","lid":"E","sup":"A"},{"atv":"Cronograma de inspeções de equipamentos","bas":"E","cat":"Prevenção e Inspeção","lid":"C","sup":"A"},{"atv":"Trabalhos no Carbono (Prontidão em HTM)","bas":"E","cat":"Prevenção e Inspeção","lid":"C","sup":"P"},{"atv":"Liberação de Trabalhos a Quente e Abrasivo (PTQ)","bas":"E","cat":"Prevenção e Inspeção","lid":"C","sup":"P"},{"atv":"Inspeção no canal de descarga","bas":"E","cat":"Prevenção e Inspeção","lid":"C","sup":"P"},{"atv":"Inspeção na casa de bombas (fire fighter e Geral)","bas":"E","cat":"Prevenção e Inspeção","lid":"C","sup":"P"},{"atv":"Plano de resgate de emergência","bas":"E","cat":"Prevenção e Inspeção","lid":"C","sup":"A"},{"atv":"Simulados de emergência (PAE)","bas":"E","cat":"Prevenção e Inspeção","lid":"C","sup":"A"},{"atv":"Medição de gases em reduções (quando solicitado)","bas":"E","cat":"Prevenção e Inspeção","lid":"C","sup":"P"},{"atv":"Monitoramento de TARD-C (CFTV)","bas":"E","cat":"Prevenção e Inspeção","lid":"C","sup":"P"},{"atv":"Check-list de viatura e equipamentos","bas":"E","cat":"Prevenção e Inspeção","lid":"C","sup":"P"},{"atv":"Escala de turnos e efetivo","bas":"P","cat":"Gestão da Equipe","lid":"P","sup":"A"},{"atv":"Passagem de turno","bas":"E","cat":"Gestão da Equipe","lid":"C","sup":"P"},{"atv":"DDS","bas":"P","cat":"Gestão da Equipe","lid":"C","sup":"A"},{"atv":"Indicadores do serviço","bas":"P","cat":"Gestão da Equipe","lid":"E","sup":"A"},{"atv":"Programa anual de treinamentos e simulados","bas":"P","cat":"Treinamento","lid":"C","sup":"A"},{"atv":"Instruções práticas no turno","bas":"P","cat":"Treinamento","lid":"C","sup":"P"},{"atv":"Relatório de ocorrência","bas":"P","cat":"Documentação","lid":"E","sup":"A"},{"atv":"RAS (Reunião de Análise de Segurança)","bas":"P","cat":"Documentação","lid":"C","sup":"A"},{"atv":"CPT (Conversa Pré Tarefa)","bas":"E","cat":"Documentação","lid":"C","sup":"P"},{"atv":"PIT STOP","bas":"E","cat":"Documentação","lid":"C","sup":"P"},{"atv":"Planilhas de inspeção dos sistemas de combate a incêndio","bas":"E","cat":"Documentação","lid":"C","sup":"A"},{"atv":"Registro de não conformidades","bas":"P","cat":"Documentação","lid":"E","sup":"A"},{"atv":"Atualização do PAE","bas":"P","cat":"Documentação","lid":"P","sup":"A"}],"roles":[{"id":"sup","lvl":"Nível 1","missao":"Gerencia o serviço de bombeiros civis e responde pela prontidão da equipe.","nome":"Bombeiro Civil Supervisor","reporta":"Reporta à gestão de SSMA / Segurança Empresarial. Lidera os Bombeiros Civis Líderes.","resp":{"Documentação":["Aprovar relatórios de ocorrência e relatórios mensais","Manter atualizado o Plano de Atendimento a Emergências (PAE)","Consolidar dados para a reunião de liderança"],"Emergência":["Assumir a coordenação geral das ocorrências de grande porte e do acionamento do PAE","Decidir, junto à brigada e à gestão, o abandono de áreas e o acionamento de apoio externo (CBM, SAMU, Defesa Civil)","Comunicar ocorrências relevantes à gestão da empresa"],"Gestão da Equipe":["Elaborar escalas de turno e garantir a cobertura mínima do efetivo","Acompanhar indicadores (tempo de resposta, inspeções, treinamentos, ocorrências)","Avaliar o desempenho dos líderes e da equipe","Fazer a interface com SSMA, áreas operacionais e órgãos externos"],"Prevenção e Inspeção":["Auditar o cumprimento do cronograma de inspeções de equipamentos de combate a incêndio","Analisar riscos das áreas e propor melhorias de prevenção","Validar a manutenção de viaturas, EPI, EPR e equipamentos de resgate"],"Treinamento":["Aprovar o programa anual de treinamentos e simulados","Garantir a reciclagem e a validade das certificações da equipe"]}},{"id":"lid","lvl":"Nível 2","missao":"Coordena a equipe do turno e comanda a resposta no local da ocorrência.","nome":"Bombeiro Civil Líder","reporta":"Reporta ao Supervisor. Lidera os Bombeiros Civis do turno.","resp":{"Documentação":["Revisar os checklists de inspeção de equipamentos e viaturas preenchidos pela equipe","Consolidar as informações das ocorrências e elaborar o relatório de ocorrência e o relatório diário do turno","Conduzir a RAS (Reunião de Análise de Segurança) do turno","Garantir a realização da CPT (Conversa Pré Tarefa) pela equipe","Conduzir o PIT STOP do turno","Validar as planilhas de inspeções de sistemas de combate a incêndio","Registrar não conformidades e encaminhar ao Supervisor"],"Emergência":["Comandar a equipe na cena da ocorrência","Avaliar o cenário, distribuir funções e definir o isolamento da área","Coordenar o combate a princípios de incêndio","Validar a verificação dos acionamentos de alarmes de emergência (falso ou não) e comunicar o resultado","A atendimento de primeiros socorros / APH e o transporte de vítimas","Coordenar as ações de salvamento e resgate","Coordenar o abandono de área e o isolamento do local","Realizar captura de animais (domésticos e silvestres)","Realizar contenção de vazamentos de óleo (pequenas quantidades)","Realização da operação da Central de Ocorrência (CFTV)","Condução do caminhão de combate a incêndio.","Solicitar recursos adicionais e apoio externo quando necessário"],"Gestão da Equipe":["Conduzir a passagem de turno","Distribuir as tarefas diárias da equipe"],"Prevenção e Inspeção":["Coordenar as rondas e inspeções de equipamentos de combate a incêndio","Distribuir e acompanhar os trabalhos no Carbono (Prontidão em HTM e Inspeção e Prevenção no Carbono)","Validar as liberações de Trabalhos a Quente e Abrasivo (PTQ)","Acompanhar a inspeção no canal de descarga","Coordenar a inspeção na casa de bombas (fire fighter e Geral)","Realizar o plano de resgate de emergência","Participação da equipe nos simulados de emergência (PAE)","Designar e acompanhar a medição de gases em reduções (quando solicitado)","Conferir o check-list de viatura e equipamentos no início do turno","Avaliação do posto de serviço"],"Treinamento":["Ministrar instruções práticas e exercícios no turno","Avaliar a equipe nos simulados e apontar necessidades de reciclagem","Realização de palestra de integração (Albras)"]}},{"id":"bas","lvl":"Nível 3","missao":"Executa as ações de prevenção e de resposta a emergências.","nome":"Bombeiro Civil Básico","reporta":"Reporta ao Bombeiro Civil Líder do turno.","resp":{"Documentação":["Preencher checklists de inspeção de equipamentos e viaturas.","Repassar ao Líder as informações das ocorrências atendidas.","Participação da RAS (Reunião de Análise de Segurança)","Realização de CPT (Conversa Pré Tarefa)","Realização de PIT STOP","Preencher planilhas de inspeções de sistema de combates a incêndios."],"Emergência":["Combater princípios de incêndio","Verificar acionamentos de alarmes de emergência (falso ou não)","Prestar primeiros socorros / APH e realizar o transporte de vítimas","Executar salvamento e resgate conforme orientação do Líder","Apoiar o abandono de área e o isolamento do local","Realizar captura de animais (domésticos e selvagem)","Contenção de vazamentos de óleo (pequenas quantidades)","Operação de Central de Ocorrência (CFTV)","Condução de caminhão de Combate a incêndio"],"Gestão da Equipe":[],"Prevenção e Inspeção":["Realizar rondas e inspeções de equipamentos de combate a incêndio","Acompanhar trabalhos no Carbono (Prontidão em HTM e Inspeção e Prevenção no Carbono)","Realizar liberação de Trabalhos a Quente e Abrasivo (PTQ)","Inspeção no canal de descarga","Acompanhamento de inspeção na casa de bombas (fire fighter e Geral)","Participação de plano de resgaste de emergência","Participação de simulados de emergência (PAE)","Realização de medição de gases em reduções (quando solicitado)","Monitoramento de TARD-C do dia (CFTV)"],"Treinamento":[]}}],"updatedAt":"2026-10-30T15:08:57.577Z"};
+
+let data = clone(DEFAULT);       // o que está salvo
+let draft = null;                // cópia em edição
+let cat = "Todas", q = "", open = new Set(["sup"]);
+let db = null, ref = null, canEdit = false, saving = false;
+
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+const norm = s => String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+const esc = s => String(s??"").replace(/[&<>"]/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+function hl(t){ t=String(t||""); if(!q) return esc(t); const i = norm(t).indexOf(norm(q)); if(i<0) return esc(t);
+  return esc(t.slice(0,i))+"<mark>"+esc(t.slice(i,i+q.length))+"</mark>"+esc(t.slice(i+q.length)); }
+const match = t => !q || norm(t).includes(norm(q));
+const cur = () => draft || data;
+const editing = () => !!draft;
+const visCats = () => CATS.filter(c => cat==="Todas" || c===cat);
+
+function valid(d){
+  return d && Array.isArray(d.roles) && Array.isArray(d.matriz) && d.roles.length===3;
+}
+
+function chips(){
+  document.getElementById("chips").innerHTML = ["Todas",...CATS].map(c =>
+    `<button class="chip ${c===cat?"on":""}" data-c="${c}">${c}</button>`).join("");
+}
+
+function tree(){
+  const d = cur(); let h = "";
+  d.roles.forEach((r,ri) => {
+    const st = STYLE[ri] || STYLE[2];
+    let n = 0, body = "";
+    if(editing()){
+      body += `<div class="edhead">
+        <label class="flab">Nome da função</label><input class="ed" data-r="${ri}" data-f="nome" value="${esc(r.nome)}">
+        <label class="flab">Missão</label><input class="ed" data-r="${ri}" data-f="missao" value="${esc(r.missao)}">
+        <label class="flab">Reporta a / lidera</label><input class="ed" data-r="${ri}" data-f="reporta" value="${esc(r.reporta)}">
+      </div>`;
+      visCats().forEach(c => {
+        const items = (r.resp[c]||[]); n += items.length;
+        body += `<div class="grp zone" data-zr="${ri}" data-zc="${c}"><h4>${c}</h4>${items.map((t,ii)=>`<div class="erow" data-tr="${ri}" data-tc="${c}" data-ti="${ii}">
+          <span class="h" draggable="true" title="Arraste para mover" data-gr="${ri}" data-gc="${c}" data-gi="${ii}">⠿</span>
+          <input class="ed" data-r="${ri}" data-c="${c}" data-i="${ii}" value="${esc(t)}">
+          <button class="mv" title="Subir" data-up-r="${ri}" data-c="${c}" data-i="${ii}" ${ii===0?"disabled":""}>↑</button>
+          <button class="mv" title="Descer" data-dn-r="${ri}" data-c="${c}" data-i="${ii}" ${ii===items.length-1?"disabled":""}>↓</button>
+          <select class="mvsel" title="Mover para outra função ou área" data-mv-r="${ri}" data-c="${c}" data-i="${ii}">${moveOpts(ri,c)}</select>
+          <button class="x" title="Remover" data-del-r="${ri}" data-c="${c}" data-i="${ii}">✕</button></div>`).join("")}
+          <button class="add" data-add-r="${ri}" data-c="${c}">+ adicionar item</button></div>`;
+      });
+    } else {
+      visCats().forEach(c => { const items = (r.resp[c]||[]).filter(match); n += items.length;
+        if(items.length) body += `<div class="grp"><h4>${c}</h4><ul>${items.map(t=>`<li>${hl(t)}</li>`).join("")}</ul></div>`; });
+      if(!body) body = '<div class="empty">Nenhum item para este filtro.</div>';
+      body += `<div class="reports">${esc(r.reporta)}</div>`;
+    }
+    const on = editing() || open.has(r.id) || (q && n>0);
+    if(ri) h += `<div class="link"></div>`;
+    h += `<div class="node ${on?"on":""}" data-id="${r.id}" style="--c:${st.c};--soft:${st.soft}">
+      <div class="lvl">${esc(r.lvl)}</div><div class="nm">${esc(r.nome)}</div><div class="ms">${esc(r.missao)}</div>
+      <div class="ct">${n} responsabilidade${n!==1?"s":""} ${on?"▲":"▼"}</div></div>
+      <div class="detail ${on?"on":""}" style="--c:${st.c}">${body}</div>`;
+  });
+  document.getElementById("tree").innerHTML = h;
+}
+
+function matriz(){
+  const d = cur(), ed = editing();
+  const nm = d.roles.map(r => esc(r.nome.replace(/^Bombeiro Civil\s*/i,"") || r.nome));
+  let h = `<tr><th>Atividade</th><th class="r">${nm[0]}</th><th class="r">${nm[1]}</th><th class="r">${nm[2]}</th>${ed?"<th></th>":""}</tr>`;
+  visCats().forEach(c => {
+    const rows = d.matriz.map((m,i)=>({m,i})).filter(o => o.m.cat===c && (ed || match(o.m.atv)));
+    if(!rows.length && !ed) return;
+    h += `<tr class="cat"><td colspan="${ed?5:4}">${c}</td></tr>`;
+    rows.forEach(({m,i}) => {
+      if(ed){
+        const pos = rows.findIndex(o=>o.i===i);
+        h += `<tr data-mr="${i}"><td><div class="erow"><span class="h" draggable="true" title="Arraste para mover" data-gm="${i}">⠿</span><input class="ed" data-m="${i}" data-f="atv" value="${esc(m.atv)}">
+          <button class="mv" title="Subir" data-mup="${i}" ${pos===0?"disabled":""}>↑</button>
+          <button class="mv" title="Descer" data-mdn="${i}" ${pos===rows.length-1?"disabled":""}>↓</button>
+          <select class="mvsel" title="Mover para outra área" data-mcat="${i}"><option value="">Mover para…</option>${CATS.filter(x=>x!==c).map(x=>`<option value="${x}">${x}</option>`).join("")}</select></div></td>${["sup","lid","bas"].map(k=>
+          `<td class="r"><select class="ed" data-m="${i}" data-f="${k}">${["A","C","E","P"].map(v=>`<option ${m[k]===v?"selected":""}>${v}</option>`).join("")}</select></td>`).join("")}
+          <td><button class="x" title="Remover" data-mdel="${i}">✕</button></td></tr>`;
+      } else {
+        h += `<tr><td>${hl(m.atv)}</td>${["sup","lid","bas"].map(k=>`<td class="r"><span class="b ${esc(m[k])}">${esc(m[k])}</span></td>`).join("")}</tr>`;
+      }
+    });
+    if(ed) h += `<tr><td colspan="5"><button class="add" data-madd="${c}">+ adicionar atividade</button></td></tr>`;
+  });
+  document.getElementById("tbl").innerHTML = h;
+}
+
+function render(){ chips(); tree(); matriz(); }
+
+/* ---- mover ações ---- */
+function moveOpts(ri,c){
+  let o = '<option value="">Mover para…</option>';
+  draft.roles.forEach((r,j) => {
+    const nm = r.nome.replace(/^Bombeiro Civil\s*/i,"") || r.nome;
+    o += `<optgroup label="${esc(nm)}">` + CATS.map(x => (j===ri && x===c) ? "" :
+      `<option value="${j}|${x}">${esc(nm)} › ${x}</option>`).join("") + `</optgroup>`;
+  });
+  return o;
+}
+function moveItem(fr,fc,fi,tr,tc,ti){
+  const src = draft.roles[fr].resp[fc]; const [it] = src.splice(fi,1);
+  const dst = (draft.roles[tr].resp[tc] ||= []);
+  if(ti===undefined || ti>dst.length) ti = dst.length;
+  if(fr===tr && fc===tc && ti>fi) ti--;
+  dst.splice(ti,0,it); tree();
+}
+function moveRow(from,to){ // to = índice alvo no array (antes de remover)
+  const [m] = draft.matriz.splice(from,1);
+  if(to>from) to--;
+  draft.matriz.splice(to,0,m); matriz();
+}
+function sameCatNeighbor(i,dir){
+  const c = draft.matriz[i].cat; let j = i+dir;
+  while(j>=0 && j<draft.matriz.length && draft.matriz[j].cat!==c) j+=dir;
+  return (j>=0 && j<draft.matriz.length) ? j : -1;
+}
+
+let drag = null;
+document.addEventListener("dragstart", e => {
+  const h = e.target.closest && e.target.closest(".h"); if(!h || !editing()) return;
+  if(h.dataset.gm!==undefined) drag = {m:+h.dataset.gm};
+  else drag = {r:+h.dataset.gr, c:h.dataset.gc, i:+h.dataset.gi};
+  e.dataTransfer.effectAllowed = "move"; try{ e.dataTransfer.setData("text/plain",""); }catch(_){}
+  (h.closest("tr")||h.closest(".erow")).classList.add("drag");
+});
+document.addEventListener("dragend", () => { drag = null;
+  document.querySelectorAll(".drag,.over").forEach(x=>x.classList.remove("drag","over")); });
+function dropTarget(el){
+  if(!drag) return null;
+  if(drag.m!==undefined) return el.closest("tr[data-mr]");
+  return el.closest(".erow[data-tr]") || el.closest(".zone");
+}
+document.addEventListener("dragover", e => {
+  const t = dropTarget(e.target); if(!t) return;
+  e.preventDefault(); e.dataTransfer.dropEffect = "move";
+  document.querySelectorAll(".over").forEach(x=>{ if(x!==t) x.classList.remove("over"); });
+  t.classList.add("over");
+});
+document.addEventListener("drop", e => {
+  const t = dropTarget(e.target); if(!t) return; e.preventDefault();
+  const d = drag; drag = null;
+  if(d.m!==undefined){
+    const to = +t.dataset.mr; if(to===d.m) return matriz();
+    draft.matriz[d.m].cat = draft.matriz[to].cat; moveRow(d.m,to); return;
+  }
+  if(t.dataset.tr!==undefined) moveItem(d.r,d.c,d.i,+t.dataset.tr,t.dataset.tc,+t.dataset.ti);
+  else moveItem(d.r,d.c,d.i,+t.dataset.zr,t.dataset.zc);
+});
+document.addEventListener("change", e => {
+  const el = e.target; if(!editing() || !el.value) return;
+  if(el.dataset.mvR!==undefined){ const [tr,tc] = el.value.split("|"); moveItem(+el.dataset.mvR,el.dataset.c,+el.dataset.i,+tr,tc); return; }
+  if(el.dataset.mcat!==undefined){ const i=+el.dataset.mcat; const [m]=draft.matriz.splice(i,1); m.cat=el.value; draft.matriz.push(m); matriz(); }
+});
+
+function setStatus(t){ document.getElementById("status").textContent = t; }
+function stamp(d){
+  if(!d || !d.updatedAt) return "";
+  try{ return "Atualizado em " + new Date(d.updatedAt).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}); }catch(e){ return ""; }
+}
+
+let baseStamp = null;
+function startEdit(){
+  draft = clone(data); baseStamp = data.updatedAt || null; q = ""; document.getElementById("q").value = "";
+  document.getElementById("q").disabled = true;
+  document.getElementById("editbar").classList.add("on");
+  document.getElementById("btnEdit").hidden = true;
+  render();
+}
+function endEdit(){
+  draft = null;
+  document.getElementById("q").disabled = false;
+  document.getElementById("editbar").classList.remove("on");
+  document.getElementById("btnEdit").hidden = !canEdit;
+  render();
+}
+function dirty(){ return draft && JSON.stringify(draft) !== JSON.stringify(data); }
+
+async function save(){
+  if(!ref || saving) return;
+  // limpa itens vazios
+  draft.roles.forEach(r => CATS.forEach(c => { r.resp[c] = (r.resp[c]||[]).map(s=>s.trim()).filter(Boolean); }));
+  draft.matriz = draft.matriz.filter(m => m.atv.trim()).map(m => ({...m, atv:m.atv.trim()}));
+  saving = true; const b = document.getElementById("btnSave"); b.disabled = true; b.textContent = "Salvando…";
+  try{
+    const snap = await ref.get();
+    const remote = snap.exists ? snap.data() : null;
+    if(remote && (remote.updatedAt||null) !== baseStamp){
+      const over = await ask("Outra pessoa (ou outra aba) salvou alterações depois que você começou a editar. Se salvar agora, essas alterações serão substituídas pelas suas.","Salvar mesmo assim","Cancelar e ver a versão nova");
+      if(!over){ if(valid(remote)) data = clone(remote); endEdit(); setStatus("Versão mais recente carregada."); return; }
+    }
+    const ts = new Date().toISOString();
+    await ref.set({roles:draft.roles, matriz:draft.matriz, updatedAt:ts});
+    data = clone(draft); data.updatedAt = ts; endEdit(); setStatus("Salvo ✓");
+  }catch(e){
+    if(e && e.code==="invalid_argument"){ canEdit = false; endEdit(); setStatus("Você não tem permissão para editar."); }
+    else setStatus("Não foi possível salvar. Tente novamente.");
+  }finally{ saving = false; b.disabled = false; b.textContent = "Salvar"; }
+}
+
+/* eventos */
+document.addEventListener("click", e => {
+  const t = e.target.closest(".tab");
+  if(t){ document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("on",b===t));
+    document.getElementById("org").hidden = t.dataset.view!=="org";
+    document.getElementById("mat").hidden = t.dataset.view!=="mat"; return; }
+  const c = e.target.closest(".chip"); if(c){ cat = c.dataset.c; render(); return; }
+  const n = e.target.closest(".node"); if(n && !editing()){ const id=n.dataset.id; open.has(id)?open.delete(id):open.add(id); tree(); return; }
+  const el = e.target;
+  if(!editing()) return;
+  if(el.dataset.addR!==undefined){ const r = draft.roles[+el.dataset.addR]; (r.resp[el.dataset.c] ||= []).push(""); tree();
+    const ins = document.querySelectorAll(`input[data-r="${el.dataset.addR}"][data-c="${el.dataset.c}"]`); ins[ins.length-1]?.focus(); return; }
+  if(el.dataset.upR!==undefined){ const i=+el.dataset.i; moveItem(+el.dataset.upR,el.dataset.c,i,+el.dataset.upR,el.dataset.c,i-1); return; }
+  if(el.dataset.dnR!==undefined){ const i=+el.dataset.i; moveItem(+el.dataset.dnR,el.dataset.c,i,+el.dataset.dnR,el.dataset.c,i+2); return; }
+  if(el.dataset.mup!==undefined){ const i=+el.dataset.mup, j=sameCatNeighbor(i,-1); if(j>=0) moveRow(i,j); return; }
+  if(el.dataset.mdn!==undefined){ const i=+el.dataset.mdn, j=sameCatNeighbor(i,1); if(j>=0) moveRow(i,j+1); return; }
+  if(el.dataset.delR!==undefined){ draft.roles[+el.dataset.delR].resp[el.dataset.c].splice(+el.dataset.i,1); tree(); return; }
+  if(el.dataset.madd!==undefined){ draft.matriz.push({cat:el.dataset.madd, atv:"", sup:"A", lid:"C", bas:"E"}); matriz(); return; }
+  if(el.dataset.mdel!==undefined){ draft.matriz.splice(+el.dataset.mdel,1); matriz(); return; }
+});
+document.addEventListener("input", e => {
+  const el = e.target; if(!editing() || !el.classList.contains("ed")) return;
+  if(el.dataset.m!==undefined){ draft.matriz[+el.dataset.m][el.dataset.f] = el.value; return; }
+  if(el.dataset.r!==undefined){
+    const r = draft.roles[+el.dataset.r];
+    if(el.dataset.f) r[el.dataset.f] = el.value;
+    else r.resp[el.dataset.c][+el.dataset.i] = el.value;
+  }
+});
+document.getElementById("q").addEventListener("input", e => { q = e.target.value.trim(); render(); });
+document.getElementById("btnEdit").onclick = startEdit;
+document.getElementById("btnSave").onclick = save;
+function ask(txt, yes, no){
+  return new Promise(res => {
+    document.getElementById("modalTxt").textContent = txt;
+    const y = document.getElementById("mYes"), n = document.getElementById("mNo"), m = document.getElementById("modal");
+    y.textContent = yes; n.textContent = no || "Voltar";
+    y.onclick = () => { m.classList.remove("on"); res(true); };
+    n.onclick = () => { m.classList.remove("on"); res(false); };
+    m.classList.add("on");
+  });
+}
+document.getElementById("btnCancel").onclick = async () => {
+  if(!dirty() || await ask("Descartar as alterações não salvas?","Descartar")) endEdit();
+};
+
+render();
+
+/* banco compartilhado + permissão */
+(async () => {
+  try{
+    const [dbx, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+    db = dbx;
+    if(user){ try{ canEdit = !!(await user.canEdit()); }catch(e){ canEdit = false; } }
+    if(!db){ setStatus(""); return; }
+    ref = db.doc("org/main");
+    document.getElementById("btnEdit").hidden = !canEdit || editing();
+    ref.onSnapshot(snap => {
+      const d = snap.exists ? snap.data() : null;
+      if(valid(d)){ data = clone(d); setStatus(stamp(d)); if(!editing()) render(); }
+    }, () => {});
+  }catch(e){ /* sem banco: mostra o conteúdo padrão, somente leitura */ }
+})();
+</script>
+</body>
+</html>
