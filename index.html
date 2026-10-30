@@ -93,8 +93,6 @@
 </header>
 
 <div class="bar">
-  <button class="tab on" data-view="org">Organograma</button>
-  <button class="tab" data-view="mat">Matriz de responsabilidades</button>
   <span class="sep"></span>
   <span class="status" id="status"></span>
   <input type="search" id="q" placeholder="Buscar responsabilidade…">
@@ -110,15 +108,6 @@
 
 <main>
   <section id="org"><div class="tree" id="tree"></div></section>
-  <section id="mat" hidden>
-    <div class="legend">
-      <span><span class="b A">A</span> Aprova / responde</span>
-      <span><span class="b C">C</span> Coordena</span>
-      <span><span class="b E">E</span> Executa</span>
-      <span><span class="b P">P</span> Participa / apoia</span>
-    </div>
-    <div class="wrap"><table class="tbl" id="tbl"></table></div>
-  </section>
 </main>
 <footer>Referências: ABNT NBR 14608 (Bombeiro Civil) e NBR 14276 (Brigada de Incêndio). Ajuste os itens conforme o procedimento interno da unidade.</footer>
 
@@ -223,10 +212,10 @@ function matriz(){
     });
     if(ed) h += `<tr><td colspan="5"><button class="add" data-madd="${c}">+ adicionar atividade</button></td></tr>`;
   });
-  document.getElementById("tbl").innerHTML = h;
+  const tb = document.getElementById("tbl"); if(tb) tb.innerHTML = h;
 }
 
-function render(){ tree(); matriz(); }
+function render(){ tree(); }
 
 /* ---- mover ações ---- */
 function moveOpts(ri,c){
@@ -340,10 +329,6 @@ async function save(){
 
 /* eventos */
 document.addEventListener("click", e => {
-  const t = e.target.closest(".tab");
-  if(t){ document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("on",b===t));
-    document.getElementById("org").hidden = t.dataset.view!=="org";
-    document.getElementById("mat").hidden = t.dataset.view!=="mat"; return; }
   const n = e.target.closest(".node"); if(n && !editing()){ const id=n.dataset.id; open.has(id)?open.delete(id):open.add(id); tree(); return; }
   const el = e.target;
   if(!editing()) return;
