@@ -113,6 +113,8 @@
   <span class="status" id="status"></span>
   <input type="search" id="q" placeholder="Buscar responsabilidade…">
   <button class="btn" id="btnEdit" hidden>✏️ Editar</button>
+  <button class="btn" id="btnLogin" hidden>🔒 Entrar como admin</button>
+  <button class="btn" id="btnLogout" hidden>Sair</button>
 </div>
 <div class="editbar" id="editbar">
   <strong>Modo de edição</strong>
@@ -127,12 +129,20 @@
 </main>
 <footer>Referências: ABNT NBR 14608 (Bombeiro Civil) e NBR 14276 (Brigada de Incêndio). Ajuste os itens conforme o procedimento interno da unidade.</footer>
 
+<div class="modal" id="loginModal"><div class="box">
+  <strong>Acesso de administrador</strong>
+  <p class="status" style="margin:6px 0 10px">Digite a senha para editar o organograma.</p>
+  <form id="loginForm"><input class="ed" id="pw" type="password" autocomplete="current-password" placeholder="Senha">
+  <div class="status" id="loginErr" style="color:var(--sup);margin-top:6px"></div>
+  <div class="acts"><button type="button" class="btn" id="lNo">Cancelar</button><button type="submit" class="btn pri" id="lYes">Entrar</button></div></form>
+</div></div>
 <div class="modal" id="modal"><div class="box">
   <div id="modalTxt"></div>
   <div class="acts"><button class="btn" id="mNo">Voltar</button><button class="btn pri" id="mYes">Descartar</button></div>
 </div></div>
 
 <script>
+const MODE = "vercel"; // "vercel" na versão publicada no Vercel
 const CATS = ["Emergência","Prevenção e Inspeção","Gestão da Equipe","Treinamento","Documentação"];
 const STYLE = [
   {c:"var(--sup)", soft:"var(--sup-soft)"},
@@ -317,6 +327,7 @@ function startEdit(){
   document.getElementById("q").disabled = true;
   document.getElementById("editbar").classList.add("on");
   document.getElementById("btnEdit").hidden = true;
+  syncAuthButtons();
   render();
 }
 function endEdit(){
@@ -324,6 +335,7 @@ function endEdit(){
   document.getElementById("q").disabled = false;
   document.getElementById("editbar").classList.remove("on");
   document.getElementById("btnEdit").hidden = !canEdit;
+  syncAuthButtons();
   render();
 }
 function dirty(){ return draft && JSON.stringify(draft) !== JSON.stringify(data); }
@@ -345,7 +357,7 @@ async function save(){
     await ref.set({roles:draft.roles, matriz:draft.matriz, updatedAt:ts});
     data = clone(draft); data.updatedAt = ts; endEdit(); setStatus("Salvo ✓");
   }catch(e){
-    if(e && e.code==="invalid_argument"){ canEdit = false; endEdit(); setStatus("Você não tem permissão para editar."); }
+    if(e && e.code==="invalid_argument"){ canEdit = false; if(MODE==="vercel"){ pw = ""; try{ sessionStorage.removeItem("orgpw"); }catch(_){} } endEdit(); setStatus(MODE==="vercel" ? "Senha inválida ou expirada. Entre novamente." : "Você não tem permissão para editar."); }
     else setStatus("Não foi possível salvar. Tente novamente.");
   }finally{ saving = false; b.disabled = false; b.textContent = "Salvar"; }
 }
@@ -400,21 +412,75 @@ document.getElementById("btnCancel").onclick = async () => {
 
 render();
 
-/* banco compartilhado + permissão */
-(async () => {
-  try{
-    const [dbx, user] = await Promise.all([claude.use("db"), claude.use("user")]);
-    db = dbx;
-    if(user){ try{ canEdit = !!(await user.canEdit()); }catch(e){ canEdit = false; } }
-    if(!db){ setStatus(""); return; }
-    ref = db.doc("org/main");
+let pw = "";
+function syncAuthButtons(){
+  const v = MODE==="vercel";
+  document.getElementById("btnLogin").hidden = !v || canEdit || editing() || !ref;
+  document.getElementById("btnLogout").hidden = !v || !canEdit || editing();
+}
+
+if(MODE === "vercel"){
+  /* Vercel: dados em /api/org, edição protegida por senha */
+  ref = {
+    async get(){
+      const r = await fetch("/api/org", {cache:"no-store"});
+      if(!r.ok) throw {code:"unavailable"};
+      const j = await r.json();
+      return { exists: valid(j), data: () => j };
+    },
+    async set(d){
+      const r = await fetch("/api/org", {method:"POST", headers:{"content-type":"application/json","x-admin-password":pw}, body:JSON.stringify(d)});
+      if(r.status===401) throw {code:"invalid_argument"};
+      if(!r.ok) throw {code:"unavailable"};
+    }
+  };
+  (async () => {
+    try{
+      const s = await ref.get();
+      if(s.exists){ data = clone(s.data()); setStatus(stamp(data)); if(!editing()) render(); }
+    }catch(e){ ref = null; setStatus(""); }
+    try{ pw = sessionStorage.getItem("orgpw") || ""; }catch(_){}
+    if(pw && ref){
+      const r = await fetch("/api/login",{method:"POST",headers:{"x-admin-password":pw}}).catch(()=>null);
+      canEdit = !!(r && r.ok); if(!canEdit) pw = "";
+    }
     document.getElementById("btnEdit").hidden = !canEdit || editing();
-    ref.onSnapshot(snap => {
-      const d = snap.exists ? snap.data() : null;
-      if(valid(d)){ data = clone(d); setStatus(stamp(d)); if(!editing()) render(); }
-    }, () => {});
-  }catch(e){ /* sem banco: mostra o conteúdo padrão, somente leitura */ }
-})();
+    syncAuthButtons();
+  })();
+  const lm = document.getElementById("loginModal");
+  document.getElementById("btnLogin").onclick = () => { document.getElementById("loginErr").textContent=""; document.getElementById("pw").value=""; lm.classList.add("on"); document.getElementById("pw").focus(); };
+  document.getElementById("lNo").onclick = () => lm.classList.remove("on");
+  document.getElementById("loginForm").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const val = document.getElementById("pw").value; const b = document.getElementById("lYes");
+    b.disabled = true; b.textContent = "Verificando…";
+    try{
+      const r = await fetch("/api/login",{method:"POST",headers:{"x-admin-password":val}});
+      if(r.ok){ pw = val; canEdit = true; try{ sessionStorage.setItem("orgpw",val); }catch(_){}
+        lm.classList.remove("on"); document.getElementById("btnEdit").hidden = false; syncAuthButtons(); setStatus("Modo administrador"); }
+      else document.getElementById("loginErr").textContent = "Senha incorreta.";
+    }catch(e){ document.getElementById("loginErr").textContent = "Sem conexão com o servidor."; }
+    finally{ b.disabled = false; b.textContent = "Entrar"; }
+  });
+  document.getElementById("btnLogout").onclick = () => { pw = ""; canEdit = false; try{ sessionStorage.removeItem("orgpw"); }catch(_){}
+    document.getElementById("btnEdit").hidden = true; syncAuthButtons(); setStatus(""); };
+} else {
+  /* Claude: banco compartilhado + permissão do compartilhamento */
+  (async () => {
+    try{
+      const [dbx, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+      db = dbx;
+      if(user){ try{ canEdit = !!(await user.canEdit()); }catch(e){ canEdit = false; } }
+      if(!db){ setStatus(""); return; }
+      ref = db.doc("org/main");
+      document.getElementById("btnEdit").hidden = !canEdit || editing();
+      ref.onSnapshot(snap => {
+        const d = snap.exists ? snap.data() : null;
+        if(valid(d)){ data = clone(d); setStatus(stamp(d)); if(!editing()) render(); }
+      }, () => {});
+    }catch(e){ /* sem banco: mostra o conteúdo padrão, somente leitura */ }
+  })();
+}
 </script>
 </body>
 </html>
