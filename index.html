@@ -33,17 +33,23 @@
   .editbar.on{display:flex}
   .status{font-size:.8rem;color:var(--muted)}
 
-  .tree{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start}
-  .col{display:flex;flex-direction:column;min-width:0}
-  .col .node{width:100%;min-height:128px;display:flex;flex-direction:column;justify-content:center}
+  .tree{display:grid;grid-template-columns:300px minmax(0,1fr);gap:22px;align-items:start}
+  .side{display:flex;flex-direction:column;align-items:stretch;position:sticky;top:12px}
+  .side .node{width:100%;text-align:left}
+  .side .node.sel{background:var(--soft);box-shadow:inset 5px 0 0 var(--c)}
+  .side .link{align-self:center}
+  .side .node.over{outline:2px dashed var(--c)}
+  .panel{background:var(--card);border:1px solid var(--line);border-top:5px solid var(--c);border-radius:12px;padding:18px 22px;min-height:300px}
+  .panel .ph .lvl{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--c);font-weight:700}
+  .panel .ph h2{margin:2px 0 4px;font-size:1.35rem}
+  .panel .ph p{margin:0;color:var(--muted);font-size:.92rem}
+  .panel .ph{border-bottom:1px dashed var(--line);padding-bottom:12px;margin-bottom:6px}
+  .panel .groups{columns:2 340px;column-gap:28px}
+  .panel .groups .grp{break-inside:avoid}
+  .panel.editing .groups{columns:1}
   textarea.ed{resize:none;overflow:hidden;line-height:1.35;display:block}
-  .col .detail{margin-top:10px}
-  .col .erow{flex-wrap:wrap}
-  .col .erow .ed{flex:1 1 calc(100% - 34px);min-width:0}
-  .col .erow .mv,.col .erow .mvsel,.col .erow .x{margin-top:2px}
-  .col .erow .mv:first-of-type{margin-left:26px}
-  .col .mvsel{flex:1;max-width:none}
-  @media (max-width:860px){ .tree{grid-template-columns:1fr} }
+  .erow .ed{flex:1;min-width:0}
+  @media (max-width:860px){ .tree{grid-template-columns:1fr} .side{position:static} }
   .node{width:min(360px,100%);background:var(--card);border:2px solid var(--c);border-radius:12px;padding:14px 16px;cursor:pointer;text-align:center;transition:transform .15s, box-shadow .15s}
   .node:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.08)}
   .node.on{background:var(--soft)}
@@ -99,7 +105,7 @@
 <body>
 <header>
   <h1>Organograma de Responsabilidades – Bombeiros Civis</h1>
-  <p>Clique em cada função para ver as responsabilidades. Use a busca para encontrar uma atividade.</p>
+  <p>Selecione uma função à esquerda para ver as responsabilidades. Use a busca para encontrar uma atividade.</p>
 </header>
 
 <div class="bar">
@@ -139,7 +145,7 @@ const DEFAULT = {"matriz":[{"atv":"Acionamento e coordenação do PAE","bas":"P"
 
 let data = clone(DEFAULT);       // o que está salvo
 let draft = null;                // cópia em edição
-let cat = "Todas", q = "", open = new Set(["sup","lid","bas"]);
+let cat = "Todas", q = "", sel = 0;
 let db = null, ref = null, canEdit = false, saving = false;
 
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
@@ -162,40 +168,46 @@ function chips(){
 }
 
 function tree(){
-  const d = cur(); let h = "";
+  const d = cur(); if(sel >= d.roles.length) sel = 0;
+  const counts = d.roles.map(r => visCats().reduce((a,c)=>a+(r.resp[c]||[]).filter(x=>editing()||match(x)).length,0));
+  let side = "";
   d.roles.forEach((r,ri) => {
     const st = STYLE[ri] || STYLE[2];
-    let n = 0, body = "";
-    if(editing()){
-      body += `<div class="edhead">
-        <label class="flab">Nome da função</label><input class="ed" data-r="${ri}" data-f="nome" value="${esc(r.nome)}">
-        <label class="flab">Missão</label><textarea class="ed" rows="1" data-r="${ri}" data-f="missao">${esc(r.missao)}</textarea>
-        <label class="flab">Reporta a / lidera</label><textarea class="ed" rows="1" data-r="${ri}" data-f="reporta">${esc(r.reporta)}</textarea>
-      </div>`;
-      visCats().forEach(c => {
-        const items = (r.resp[c]||[]); n += items.length;
-        body += `<div class="grp zone" data-zr="${ri}" data-zc="${c}"><h4>${c}</h4>${items.map((t,ii)=>`<div class="erow" data-tr="${ri}" data-tc="${c}" data-ti="${ii}">
-          <span class="h" draggable="true" title="Arraste para mover" data-gr="${ri}" data-gc="${c}" data-gi="${ii}">⠿</span>
-          <textarea class="ed" rows="1" data-r="${ri}" data-c="${c}" data-i="${ii}">${esc(t)}</textarea>
-          <button class="mv" title="Subir" data-up-r="${ri}" data-c="${c}" data-i="${ii}" ${ii===0?"disabled":""}>↑</button>
-          <button class="mv" title="Descer" data-dn-r="${ri}" data-c="${c}" data-i="${ii}" ${ii===items.length-1?"disabled":""}>↓</button>
-          <select class="mvsel" title="Mover para outra função ou área" data-mv-r="${ri}" data-c="${c}" data-i="${ii}">${moveOpts(ri,c)}</select>
-          <button class="x" title="Remover" data-del-r="${ri}" data-c="${c}" data-i="${ii}">✕</button></div>`).join("")}
-          <button class="add" data-add-r="${ri}" data-c="${c}">+ adicionar item</button></div>`;
-      });
-    } else {
-      visCats().forEach(c => { const items = (r.resp[c]||[]).filter(match); n += items.length;
-        if(items.length) body += `<div class="grp"><h4>${c}</h4><ul>${items.map(t=>`<li>${hl(t)}</li>`).join("")}</ul></div>`; });
-      if(!body) body = '<div class="empty">Nenhum item para este filtro.</div>';
-      body += `<div class="reports">${esc(r.reporta)}</div>`;
-    }
-    const on = editing() || open.has(r.id) || (q && n>0);
-    h += `<div class="col"><div class="node ${on?"on":""}" data-id="${r.id}" style="--c:${st.c};--soft:${st.soft}">
-      <div class="lvl">${esc(r.lvl)}</div><div class="nm">${esc(r.nome)}</div><div class="ms">${esc(r.missao)}</div>
-      <div class="ct">${n} responsabilidade${n!==1?"s":""} ${on?"▲":"▼"}</div></div>
-      <div class="detail ${on?"on":""}" style="--c:${st.c}">${body}</div></div>`;
+    if(ri) side += `<div class="link"></div>`;
+    side += `<div class="node ${ri===sel?"sel":""}" data-ri="${ri}" style="--c:${st.c};--soft:${st.soft}">
+      <div class="lvl">${esc(r.lvl)}</div><div class="nm">${esc(r.nome)}</div>
+      <div class="ct">${counts[ri]} responsabilidade${counts[ri]!==1?"s":""}${q&&!editing()?(counts[ri]!==1?" encontradas":" encontrada"):""}</div></div>`;
   });
-  document.getElementById("tree").innerHTML = h;
+  const r = d.roles[sel], ri = sel, st = STYLE[ri] || STYLE[2];
+  let body = "";
+  if(editing()){
+    body += `<div class="edhead">
+      <label class="flab">Nome da função</label><input class="ed" data-r="${ri}" data-f="nome" value="${esc(r.nome)}">
+      <label class="flab">Missão</label><textarea class="ed" rows="1" data-r="${ri}" data-f="missao">${esc(r.missao)}</textarea>
+      <label class="flab">Reporta a / lidera</label><textarea class="ed" rows="1" data-r="${ri}" data-f="reporta">${esc(r.reporta)}</textarea>
+    </div><div class="groups">`;
+    visCats().forEach(c => {
+      const items = (r.resp[c]||[]);
+      body += `<div class="grp zone" data-zr="${ri}" data-zc="${c}"><h4>${c}</h4>${items.map((t,ii)=>`<div class="erow" data-tr="${ri}" data-tc="${c}" data-ti="${ii}">
+        <span class="h" draggable="true" title="Arraste para mover (solte numa função à esquerda para trocar de função)" data-gr="${ri}" data-gc="${c}" data-gi="${ii}">⠿</span>
+        <textarea class="ed" rows="1" data-r="${ri}" data-c="${c}" data-i="${ii}">${esc(t)}</textarea>
+        <button class="mv" title="Subir" data-up-r="${ri}" data-c="${c}" data-i="${ii}" ${ii===0?"disabled":""}>↑</button>
+        <button class="mv" title="Descer" data-dn-r="${ri}" data-c="${c}" data-i="${ii}" ${ii===items.length-1?"disabled":""}>↓</button>
+        <select class="mvsel" title="Mover para outra função ou área" data-mv-r="${ri}" data-c="${c}" data-i="${ii}">${moveOpts(ri,c)}</select>
+        <button class="x" title="Remover" data-del-r="${ri}" data-c="${c}" data-i="${ii}">✕</button></div>`).join("")}
+        <button class="add" data-add-r="${ri}" data-c="${c}">+ adicionar item</button></div>`;
+    });
+    body += `</div>`;
+  } else {
+    body += `<div class="ph"><div class="lvl">${esc(r.lvl)}</div><h2>${esc(r.nome)}</h2><p>${esc(r.missao)}</p><p style="margin-top:4px">${esc(r.reporta)}</p></div><div class="groups">`;
+    let any = false;
+    visCats().forEach(c => { const items = (r.resp[c]||[]).filter(match);
+      if(items.length){ any = true; body += `<div class="grp"><h4>${c}</h4><ul>${items.map(t=>`<li>${hl(t)}</li>`).join("")}</ul></div>`; } });
+    body += `</div>`;
+    if(!any) body += '<div class="empty">Nenhuma responsabilidade encontrada para esta busca.</div>';
+  }
+  document.getElementById("tree").innerHTML =
+    `<div class="side">${side}</div><div class="panel ${editing()?"editing":""}" style="--c:${st.c}">${body}</div>`;
   document.querySelectorAll("textarea.ed").forEach(fit);
 }
 
@@ -268,7 +280,7 @@ document.addEventListener("dragend", () => { drag = null;
 function dropTarget(el){
   if(!drag) return null;
   if(drag.m!==undefined) return el.closest("tr[data-mr]");
-  return el.closest(".erow[data-tr]") || el.closest(".zone");
+  return el.closest(".node[data-ri]") || el.closest(".erow[data-tr]") || el.closest(".zone");
 }
 document.addEventListener("dragover", e => {
   const t = dropTarget(e.target); if(!t) return;
@@ -283,6 +295,7 @@ document.addEventListener("drop", e => {
     const to = +t.dataset.mr; if(to===d.m) return matriz();
     draft.matriz[d.m].cat = draft.matriz[to].cat; moveRow(d.m,to); return;
   }
+  if(t.dataset.ri!==undefined){ if(+t.dataset.ri!==d.r) moveItem(d.r,d.c,d.i,+t.dataset.ri,d.c); else tree(); return; }
   if(t.dataset.tr!==undefined) moveItem(d.r,d.c,d.i,+t.dataset.tr,t.dataset.tc,+t.dataset.ti);
   else moveItem(d.r,d.c,d.i,+t.dataset.zr,t.dataset.zc);
 });
@@ -339,7 +352,7 @@ async function save(){
 
 /* eventos */
 document.addEventListener("click", e => {
-  const n = e.target.closest(".node"); if(n && !editing()){ const id=n.dataset.id; open.has(id)?open.delete(id):open.add(id); tree(); return; }
+  const n = e.target.closest(".node[data-ri]"); if(n){ sel = +n.dataset.ri; tree(); return; }
   const el = e.target;
   if(!editing()) return;
   if(el.dataset.addR!==undefined){ const r = draft.roles[+el.dataset.addR]; (r.resp[el.dataset.c] ||= []).push(""); tree();
@@ -363,7 +376,12 @@ document.addEventListener("input", e => {
     else r.resp[el.dataset.c][+el.dataset.i] = el.value;
   }
 });
-document.getElementById("q").addEventListener("input", e => { q = e.target.value.trim(); render(); });
+document.getElementById("q").addEventListener("input", e => {
+  q = e.target.value.trim();
+  if(q){ const d = cur(); const has = ri => CATS.some(c => (d.roles[ri].resp[c]||[]).some(match));
+    if(!has(sel)){ const f = d.roles.findIndex((_,i)=>has(i)); if(f>=0) sel = f; } }
+  render();
+});
 document.getElementById("btnEdit").onclick = startEdit;
 document.getElementById("btnSave").onclick = save;
 function ask(txt, yes, no){
