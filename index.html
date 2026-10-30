@@ -16,10 +16,10 @@
   }
   *{box-sizing:border-box}
   body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
-  header{padding:24px 20px 8px;max-width:1100px;margin:0 auto}
+  header{padding:24px 20px 8px;max-width:1400px;margin:0 auto}
   h1{margin:0;font-size:1.45rem}
   header p{margin:6px 0 0;color:var(--muted);font-size:.92rem}
-  .bar{max-width:1100px;margin:14px auto 0;padding:0 20px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .bar{max-width:1400px;margin:14px auto 0;padding:0 20px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
   button{font:inherit}
   .tab,.chip,.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 14px;border-radius:999px;cursor:pointer;font-size:.88rem}
   .tab.on,.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
@@ -27,13 +27,23 @@
   .btn:disabled{opacity:.5;cursor:default}
   .sep{flex:1}
   input[type=search]{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 12px;border-radius:8px;min-width:200px;font-size:.88rem}
-  main{max-width:1100px;margin:0 auto;padding:18px 20px 40px}
+  main{max-width:1400px;margin:0 auto;padding:18px 20px 40px}
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
-  .editbar{max-width:1100px;margin:12px auto 0;padding:10px 14px;display:none;gap:8px;align-items:center;flex-wrap:wrap;background:var(--warn);border:1px solid var(--line);border-radius:10px;font-size:.88rem}
+  .editbar{max-width:1400px;margin:12px auto 0;padding:10px 14px;display:none;gap:8px;align-items:center;flex-wrap:wrap;background:var(--warn);border:1px solid var(--line);border-radius:10px;font-size:.88rem}
   .editbar.on{display:flex}
   .status{font-size:.8rem;color:var(--muted)}
 
-  .tree{display:flex;flex-direction:column;align-items:center}
+  .tree{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start}
+  .col{display:flex;flex-direction:column;min-width:0}
+  .col .node{width:100%;min-height:128px;display:flex;flex-direction:column;justify-content:center}
+  textarea.ed{resize:none;overflow:hidden;line-height:1.35;display:block}
+  .col .detail{margin-top:10px}
+  .col .erow{flex-wrap:wrap}
+  .col .erow .ed{flex:1 1 calc(100% - 34px);min-width:0}
+  .col .erow .mv,.col .erow .mvsel,.col .erow .x{margin-top:2px}
+  .col .erow .mv:first-of-type{margin-left:26px}
+  .col .mvsel{flex:1;max-width:none}
+  @media (max-width:860px){ .tree{grid-template-columns:1fr} }
   .node{width:min(360px,100%);background:var(--card);border:2px solid var(--c);border-radius:12px;padding:14px 16px;cursor:pointer;text-align:center;transition:transform .15s, box-shadow .15s}
   .node:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.08)}
   .node.on{background:var(--soft)}
@@ -79,7 +89,7 @@
   .b.A{background:#8a1c1c;color:#fff}.b.C{background:#c2410c;color:#fff}.b.E{background:#b45309;color:#fff}.b.P{background:var(--line);color:var(--ink)}
   .legend{display:flex;flex-wrap:wrap;gap:14px;margin:0 0 12px;font-size:.85rem;color:var(--muted)}
   .wrap{overflow-x:auto}
-  footer{max-width:1100px;margin:0 auto;padding:0 20px 30px;color:var(--muted);font-size:.78rem}
+  footer{max-width:1400px;margin:0 auto;padding:0 20px 30px;color:var(--muted);font-size:.78rem}
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;padding:20px}
   .modal.on{display:flex}
   .modal .box{background:var(--card);border-radius:12px;padding:18px 20px;max-width:380px}
@@ -129,7 +139,7 @@ const DEFAULT = {"matriz":[{"atv":"Acionamento e coordenação do PAE","bas":"P"
 
 let data = clone(DEFAULT);       // o que está salvo
 let draft = null;                // cópia em edição
-let cat = "Todas", q = "", open = new Set(["sup"]);
+let cat = "Todas", q = "", open = new Set(["sup","lid","bas"]);
 let db = null, ref = null, canEdit = false, saving = false;
 
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
@@ -159,14 +169,14 @@ function tree(){
     if(editing()){
       body += `<div class="edhead">
         <label class="flab">Nome da função</label><input class="ed" data-r="${ri}" data-f="nome" value="${esc(r.nome)}">
-        <label class="flab">Missão</label><input class="ed" data-r="${ri}" data-f="missao" value="${esc(r.missao)}">
-        <label class="flab">Reporta a / lidera</label><input class="ed" data-r="${ri}" data-f="reporta" value="${esc(r.reporta)}">
+        <label class="flab">Missão</label><textarea class="ed" rows="1" data-r="${ri}" data-f="missao">${esc(r.missao)}</textarea>
+        <label class="flab">Reporta a / lidera</label><textarea class="ed" rows="1" data-r="${ri}" data-f="reporta">${esc(r.reporta)}</textarea>
       </div>`;
       visCats().forEach(c => {
         const items = (r.resp[c]||[]); n += items.length;
         body += `<div class="grp zone" data-zr="${ri}" data-zc="${c}"><h4>${c}</h4>${items.map((t,ii)=>`<div class="erow" data-tr="${ri}" data-tc="${c}" data-ti="${ii}">
           <span class="h" draggable="true" title="Arraste para mover" data-gr="${ri}" data-gc="${c}" data-gi="${ii}">⠿</span>
-          <input class="ed" data-r="${ri}" data-c="${c}" data-i="${ii}" value="${esc(t)}">
+          <textarea class="ed" rows="1" data-r="${ri}" data-c="${c}" data-i="${ii}">${esc(t)}</textarea>
           <button class="mv" title="Subir" data-up-r="${ri}" data-c="${c}" data-i="${ii}" ${ii===0?"disabled":""}>↑</button>
           <button class="mv" title="Descer" data-dn-r="${ri}" data-c="${c}" data-i="${ii}" ${ii===items.length-1?"disabled":""}>↓</button>
           <select class="mvsel" title="Mover para outra função ou área" data-mv-r="${ri}" data-c="${c}" data-i="${ii}">${moveOpts(ri,c)}</select>
@@ -180,13 +190,13 @@ function tree(){
       body += `<div class="reports">${esc(r.reporta)}</div>`;
     }
     const on = editing() || open.has(r.id) || (q && n>0);
-    if(ri) h += `<div class="link"></div>`;
-    h += `<div class="node ${on?"on":""}" data-id="${r.id}" style="--c:${st.c};--soft:${st.soft}">
+    h += `<div class="col"><div class="node ${on?"on":""}" data-id="${r.id}" style="--c:${st.c};--soft:${st.soft}">
       <div class="lvl">${esc(r.lvl)}</div><div class="nm">${esc(r.nome)}</div><div class="ms">${esc(r.missao)}</div>
       <div class="ct">${n} responsabilidade${n!==1?"s":""} ${on?"▲":"▼"}</div></div>
-      <div class="detail ${on?"on":""}" style="--c:${st.c}">${body}</div>`;
+      <div class="detail ${on?"on":""}" style="--c:${st.c}">${body}</div></div>`;
   });
   document.getElementById("tree").innerHTML = h;
+  document.querySelectorAll("textarea.ed").forEach(fit);
 }
 
 function matriz(){
@@ -333,7 +343,7 @@ document.addEventListener("click", e => {
   const el = e.target;
   if(!editing()) return;
   if(el.dataset.addR!==undefined){ const r = draft.roles[+el.dataset.addR]; (r.resp[el.dataset.c] ||= []).push(""); tree();
-    const ins = document.querySelectorAll(`input[data-r="${el.dataset.addR}"][data-c="${el.dataset.c}"]`); ins[ins.length-1]?.focus(); return; }
+    const ins = document.querySelectorAll(`textarea[data-r="${el.dataset.addR}"][data-c="${el.dataset.c}"]`); ins[ins.length-1]?.focus(); return; }
   if(el.dataset.upR!==undefined){ const i=+el.dataset.i; moveItem(+el.dataset.upR,el.dataset.c,i,+el.dataset.upR,el.dataset.c,i-1); return; }
   if(el.dataset.dnR!==undefined){ const i=+el.dataset.i; moveItem(+el.dataset.dnR,el.dataset.c,i,+el.dataset.dnR,el.dataset.c,i+2); return; }
   if(el.dataset.mup!==undefined){ const i=+el.dataset.mup, j=sameCatNeighbor(i,-1); if(j>=0) moveRow(i,j); return; }
@@ -342,8 +352,10 @@ document.addEventListener("click", e => {
   if(el.dataset.madd!==undefined){ draft.matriz.push({cat:el.dataset.madd, atv:"", sup:"A", lid:"C", bas:"E"}); matriz(); return; }
   if(el.dataset.mdel!==undefined){ draft.matriz.splice(+el.dataset.mdel,1); matriz(); return; }
 });
+function fit(el){ el.style.height = "auto"; el.style.height = el.scrollHeight + 2 + "px"; }
+window.addEventListener("resize", () => document.querySelectorAll("textarea.ed").forEach(fit));
 document.addEventListener("input", e => {
-  const el = e.target; if(!editing() || !el.classList.contains("ed")) return;
+  const el = e.target; if(el.tagName==="TEXTAREA") fit(el); if(!editing() || !el.classList.contains("ed")) return;
   if(el.dataset.m!==undefined){ draft.matriz[+el.dataset.m][el.dataset.f] = el.value; return; }
   if(el.dataset.r!==undefined){
     const r = draft.roles[+el.dataset.r];
